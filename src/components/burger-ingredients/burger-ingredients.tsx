@@ -3,65 +3,84 @@ import { useInView } from 'react-intersection-observer';
 
 import { TTabMode } from '@utils-types';
 import { BurgerIngredientsUI } from '../ui/burger-ingredients';
+import { useSelector } from '../../services/store';
+import { selectIngredientsList } from '../../services/slices/IngredientsSlice';
+import { Preloader } from '../../components/ui';
+import { selectIngredientsLoading } from '../../services/slices/IngredientsSlice';
 
+// Компонент для отображения списка ингредиентов с логикой фильтрации и навигации
 export const BurgerIngredients: FC = () => {
-  /** TODO: взять переменные из стора */
-  const buns = [];
-  const mains = [];
-  const sauces = [];
+  const ingredientsList = useSelector(selectIngredientsList);
+  const isLoading = useSelector(selectIngredientsLoading);
 
-  const [currentTab, setCurrentTab] = useState<TTabMode>('bun');
-  const titleBunRef = useRef<HTMLHeadingElement>(null);
-  const titleMainRef = useRef<HTMLHeadingElement>(null);
-  const titleSaucesRef = useRef<HTMLHeadingElement>(null);
+  if (isLoading) {
+    return <Preloader />;
+  }
 
-  const [bunsRef, inViewBuns] = useInView({
+  // Разделяем ингредиенты по категориям
+  const bunIngredients = ingredientsList.filter((item) => item.type === 'bun');
+  const mainIngredients = ingredientsList.filter(
+    (item) => item.type === 'main'
+  );
+  const sauceIngredients = ingredientsList.filter(
+    (item) => item.type === 'sauce'
+  );
+
+  // Активная вкладка
+  const [activeTab, setActiveTab] = useState<TTabMode>('bun');
+
+  // Ссылки на заголовки секций для навигации
+  const bunSectionRef = useRef<HTMLHeadingElement>(null);
+  const mainSectionRef = useRef<HTMLHeadingElement>(null);
+  const sauceSectionRef = useRef<HTMLHeadingElement>(null);
+
+  const [bunSectionInView, isBunSectionVisible] = useInView({
     threshold: 0
   });
 
-  const [mainsRef, inViewFilling] = useInView({
+  const [mainSectionInView, isMainSectionVisible] = useInView({
     threshold: 0
   });
 
-  const [saucesRef, inViewSauces] = useInView({
+  const [sauceSectionInView, isSauceSectionVisible] = useInView({
     threshold: 0
   });
 
+  // Автоматическое переключение вкладок при прокрутке
   useEffect(() => {
-    if (inViewBuns) {
-      setCurrentTab('bun');
-    } else if (inViewSauces) {
-      setCurrentTab('sauce');
-    } else if (inViewFilling) {
-      setCurrentTab('main');
+    if (isBunSectionVisible) {
+      setActiveTab('bun');
+    } else if (isSauceSectionVisible) {
+      setActiveTab('sauce');
+    } else if (isMainSectionVisible) {
+      setActiveTab('main');
     }
-  }, [inViewBuns, inViewFilling, inViewSauces]);
+  }, [isBunSectionVisible, isMainSectionVisible, isSauceSectionVisible]);
 
-  const onTabClick = (tab: string) => {
-    setCurrentTab(tab as TTabMode);
+  // Навигация по клику на вкладки
+  const handleTabClick = (tab: string) => {
+    setActiveTab(tab as TTabMode);
     if (tab === 'bun')
-      titleBunRef.current?.scrollIntoView({ behavior: 'smooth' });
+      bunSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     if (tab === 'main')
-      titleMainRef.current?.scrollIntoView({ behavior: 'smooth' });
+      mainSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     if (tab === 'sauce')
-      titleSaucesRef.current?.scrollIntoView({ behavior: 'smooth' });
+      sauceSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  return null;
 
   return (
     <BurgerIngredientsUI
-      currentTab={currentTab}
-      buns={buns}
-      mains={mains}
-      sauces={sauces}
-      titleBunRef={titleBunRef}
-      titleMainRef={titleMainRef}
-      titleSaucesRef={titleSaucesRef}
-      bunsRef={bunsRef}
-      mainsRef={mainsRef}
-      saucesRef={saucesRef}
-      onTabClick={onTabClick}
+      currentTab={activeTab}
+      buns={bunIngredients}
+      mains={mainIngredients}
+      sauces={sauceIngredients}
+      titleBunRef={bunSectionRef}
+      titleMainRef={mainSectionRef}
+      titleSaucesRef={sauceSectionRef}
+      bunsRef={bunSectionInView}
+      mainsRef={mainSectionInView}
+      saucesRef={sauceSectionInView}
+      onTabClick={handleTabClick}
     />
   );
 };

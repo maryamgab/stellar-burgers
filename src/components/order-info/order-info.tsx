@@ -1,44 +1,60 @@
 import { FC, useMemo } from 'react';
 import { Preloader } from '../ui/preloader';
 import { OrderInfoUI } from '../ui/order-info';
-import { TIngredient } from '@utils-types';
+import { TIngredient, TOrder } from '@utils-types';
+import { selectIngredientsList } from '../../services/slices/IngredientsSlice';
+import {
+  getFeedOrders,
+  getOrderByNum
+} from '../../services/slices/FeedDataSlice';
+import { useSelector, useDispatch } from '../../services/store';
+import { useParams, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { selectOrderById } from '../../services/selector';
 
 export const OrderInfo: FC = () => {
-  /** TODO: взять переменные orderData и ingredients из стора */
-  const orderData = {
-    createdAt: '',
-    ingredients: [],
-    _id: '',
-    status: '',
-    name: '',
-    updatedAt: 'string',
-    number: 0
-  };
+  // Получаем номер заказа из URL параметров
+  const { number } = useParams();
+  const feedOrders = useSelector(getFeedOrders); // Список заказов из Redux
+  const reduxDispatch = useDispatch();
 
-  const ingredients: TIngredient[] = [];
+  const currentOrder = useSelector(selectOrderById(Number(number)));
+  const availableIngredients: TIngredient[] = useSelector(
+    selectIngredientsList
+  );
 
-  /* Готовим данные для отображения */
-  const orderInfo = useMemo(() => {
-    if (!orderData || !ingredients.length) return null;
+  useEffect(() => {
+    if (!currentOrder) {
+      reduxDispatch(getOrderByNum(Number(number)));
+    }
+  }, [reduxDispatch]);
 
-    const date = new Date(orderData.createdAt);
+  // Подготавливаем данные для отображения с мемоизацией
+  const processedOrderData = useMemo(() => {
+    if (!currentOrder || !availableIngredients.length) return; // Проверяем наличие данных
 
-    type TIngredientsWithCount = {
+    const orderDate = new Date(currentOrder.createdAt); // Дата создания заказа
+
+    type TIngredientWithQuantity = {
       [key: string]: TIngredient & { count: number };
     };
 
-    const ingredientsInfo = orderData.ingredients.reduce(
-      (acc: TIngredientsWithCount, item) => {
-        if (!acc[item]) {
-          const ingredient = ingredients.find((ing) => ing._id === item);
-          if (ingredient) {
-            acc[item] = {
-              ...ingredient,
+    // Собираем информацию об ингредиентах с количеством
+    const ingredientsWithCount = currentOrder.ingredients.reduce(
+      (acc: TIngredientWithQuantity, ingredientId) => {
+        if (!acc[ingredientId]) {
+          // Добавляем новый ингредиент
+          const foundIngredient = availableIngredients.find(
+            (ing) => ing._id === ingredientId
+          );
+          if (foundIngredient) {
+            acc[ingredientId] = {
+              ...foundIngredient,
               count: 1
             };
           }
         } else {
-          acc[item].count++;
+          acc[ingredientId].count++; // Увеличиваем количество существующего ингредиента
         }
 
         return acc;
@@ -46,22 +62,24 @@ export const OrderInfo: FC = () => {
       {}
     );
 
-    const total = Object.values(ingredientsInfo).reduce(
-      (acc, item) => acc + item.price * item.count,
+    // Вычисляем общую стоимость заказа
+    const orderTotal = Object.values(ingredientsWithCount).reduce(
+      (sum, ingredient) => sum + ingredient.price * ingredient.count,
       0
     );
 
+    // Возвращаем обработанные данные заказа
     return {
-      ...orderData,
-      ingredientsInfo,
-      date,
-      total
+      ...currentOrder,
+      ingredientsInfo: ingredientsWithCount,
+      date: orderDate,
+      total: orderTotal
     };
-  }, [orderData, ingredients]);
+  }, [currentOrder, availableIngredients]);
 
-  if (!orderInfo) {
+  if (!processedOrderData) {
     return <Preloader />;
   }
 
-  return <OrderInfoUI orderInfo={orderInfo} />;
+  return <OrderInfoUI orderInfo={processedOrderData} />;
 };

@@ -4,24 +4,27 @@ import ReactDOM from 'react-dom';
 import { TModalProps } from './type';
 import { ModalUI } from '@ui';
 
-const modalRoot = document.getElementById('modals');
+const modalContainer = document.getElementById('modals');
 
 export const Modal: FC<TModalProps> = memo(({ title, onClose, children }) => {
+  // Обработка нажатия клавиши Escape для закрытия модального окна
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      e.key === 'Escape' && onClose();
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      event.key === 'Escape' && onClose();
     };
 
-    document.addEventListener('keydown', handleEsc);
+    document.addEventListener('keydown', handleEscapeKey);
+    // Очистка обработчика при размонтировании
     return () => {
-      document.removeEventListener('keydown', handleEsc);
+      document.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [onClose]);
+  }, [onClose]); // Зависимость от функции закрытия
 
+  // Отображение модального окна через React Portal
   return ReactDOM.createPortal(
-    <ModalUI title={title} onClose={onClose}>
+    <ModalUI title={title} onClose={onClose} data-cy='modal'>
       {children}
     </ModalUI>,
-    modalRoot as HTMLDivElement
+    modalContainer as HTMLDivElement
   );
 });

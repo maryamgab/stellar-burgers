@@ -1,28 +1,40 @@
 import { FC } from 'react';
-
 import { TOrder } from '@utils-types';
 import { FeedInfoUI } from '../ui/feed-info';
+import {
+  getFeedOrders,
+  getTotalEmountOrders,
+  getTotalEmountToday,
+  getLoading,
+  getError
+} from '../../services/slices/FeedDataSlice';
+import { useSelector } from '../../services/store';
 
-const getOrders = (orders: TOrder[], status: string): number[] =>
-  orders
-    .filter((item) => item.status === status)
-    .map((item) => item.number)
-    .slice(0, 20);
+// Компонент для отображения статистики заказов в ленте
+
+// Функция для получения номеров заказов по статусу
+const filterOrdersByStatus = (
+  ordersList: TOrder[],
+  orderStatus: string
+): number[] =>
+  ordersList
+    .filter((order) => order.status === orderStatus) // Фильтруем по статусу
+    .map((order) => order.number) // Получаем номера заказов
+    .slice(0, 20); // Ограничиваем до 20 элементов
 
 export const FeedInfo: FC = () => {
-  /** TODO: взять переменные из стора */
-  const orders: TOrder[] = [];
-  const feed = {};
+  const feedOrders: TOrder[] = useSelector(getFeedOrders);
+  const totalOrdersCount = useSelector(getTotalEmountOrders);
+  const todayOrdersCount = useSelector(getTotalEmountToday);
 
-  const readyOrders = getOrders(orders, 'done');
-
-  const pendingOrders = getOrders(orders, 'pending');
+  const completedOrders = filterOrdersByStatus(feedOrders, 'done');
+  const inProgressOrders = filterOrdersByStatus(feedOrders, 'pending');
 
   return (
     <FeedInfoUI
-      readyOrders={readyOrders}
-      pendingOrders={pendingOrders}
-      feed={feed}
+      readyOrders={completedOrders}
+      pendingOrders={inProgressOrders}
+      feed={{ total: totalOrdersCount, totalToday: todayOrdersCount }}
     />
   );
 };
